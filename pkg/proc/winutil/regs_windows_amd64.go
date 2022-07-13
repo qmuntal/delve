@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"unsafe"
 
+	"github.com/go-delve/delve/pkg/dwarf/op"
+	"github.com/go-delve/delve/pkg/dwarf/regnum"
 	"github.com/go-delve/delve/pkg/proc"
 )
 
@@ -35,6 +37,10 @@ type AMD64Registers struct {
 	tls     uint64
 	Context *CONTEXT
 	fltSave *XMM_SAVE_AREA32
+}
+
+func NewRegisters(context *CONTEXT, TebBaseAddress uint64) proc.Registers {
+	return NewAMD64Registers(context, TebBaseAddress)
 }
 
 // NewAMD64Registers creates a new AMD64Registers struct from a CONTEXT
@@ -177,6 +183,10 @@ func (r *AMD64Registers) Copy() (proc.Registers, error) {
 	return &rr, nil
 }
 
+func (r *AMD64Registers) Ctx() *CONTEXT {
+	return r.Context
+}
+
 // M128A tracks the _M128A windows struct.
 type M128A struct {
 	Low  uint64
@@ -266,4 +276,77 @@ func NewCONTEXT() *CONTEXT {
 	var c *CONTEXT
 	buf := make([]byte, unsafe.Sizeof(*c)+15)
 	return (*CONTEXT)(unsafe.Pointer((uintptr(unsafe.Pointer(&buf[15]))) &^ 15))
+}
+
+func (ctx *CONTEXT) SetPC(pc uint64) {
+	ctx.Rip = pc
+}
+
+func (ctx *CONTEXT) SetTrap(trap bool) {
+	const v = 0x100
+	if trap {
+		ctx.Cpsr |= v
+	} else {
+		ctx.Cpsr &= ^uint32(v)
+	}
+}
+
+func (ctx *CONTEXT) SetReg(regNum uint64, reg *op.DwarfRegister) error {
+	var p *uint64
+
+	switch regNum {
+	case regnum.AMD64_Rax:
+		p = &ctx.Rax
+	case regnum.AMD64_Rbx:
+		p = &ctx.Rbx
+	case regnum.AMD64_Rcx:
+		p = &ctx.Rcx
+	case regnum.AMD64_Rdx:
+		p = &ctx.Rdx
+	case regnum.AMD64_Rsi:
+		p = &ctx.Rsi
+	case regnum.AMD64_Rdi:
+		p = &ctx.Rdi
+	case regnum.AMD64_Rbp:
+		p = &ctx.Rbp
+	case regnum.AMD64_Rsp:
+		p = &ctx.Rsp
+	case regnum.AMD64_R8:
+		p = &ctx.R8
+	case regnum.AMD64_R9:
+		p = &ctx.R9
+	case regnum.AMD64_R10:
+		p = &ctx.R10
+	case regnum.AMD64_R11:
+		p = &ctx.R11
+	case regnum.AMD64_R12:
+		p = &ctx.R12
+	case regnum.AMD64_R13:
+		p = &ctx.R13
+	case regnum.AMD64_R14:
+		p = &ctx.R14
+	case regnum.AMD64_R15:
+		p = &ctx.R15
+	case regnum.AMD64_Rip:
+		p = &ctx.Rip
+	}
+
+	if p != nil {
+		if reg.Bytes != nil && len(reg.Bytes) != 8 {
+			return fmt.Errorf("wrong number of bytes for register %s (%d)", regnum.AMD64ToName(regNum), len(reg.Bytes))
+		}
+		*p = reg.Uint64Val
+	} else if regNum == regnum.AMD64_Rflags {
+		ctx.EFlags = uint32(reg.Uint64Val)
+	} else {
+		if regNum < regnum.AMD64_XMM0 || regNum > regnum.AMD64_XMM0+15 {
+			return fmt.Errorf("can not set register %s", regnum.AMD64ToName(regNum))
+		}
+		reg.FillBytes()
+		if len(reg.Bytes) > 16 {
+			return fmt.Errorf("too many bytes when setting register %s", regnum.AMD64ToName(regNum))
+		}
+		copy(ctx.FltSave.XmmRegisters[(regNum-regnum.AMD64_XMM0)*16:], reg.Bytes)
+	}
+	return nil
 }

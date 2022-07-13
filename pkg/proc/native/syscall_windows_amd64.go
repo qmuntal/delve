@@ -14,11 +14,3 @@ const (
 	_CONTEXT_EXCEPTION_REQUEST   = 0x40000000
 	_CONTEXT_EXCEPTION_REPORTING = 0x80000000
 )
-
-type _DEBUG_EVENT struct {
-	DebugEventCode uint32
-	ProcessId      uint32
-	ThreadId       uint32
-	_              uint32 // to align Union properly
-	U              [160]byte
-}
