@@ -138,7 +138,7 @@ type ARM64CONTEXT struct {
 	Wvr            [ARM64_MAX_WATCHPOINTS]uint64
 }
 
-// NewCONTEXT allocates Windows CONTEXT structure aligned to 16 bytes.
+// NewARM64CONTEXT allocates Windows CONTEXT structure aligned to 16 bytes.
 func NewARM64CONTEXT() *ARM64CONTEXT {
 	var c *CONTEXT
 	buf := make([]byte, unsafe.Sizeof(*c)+15)

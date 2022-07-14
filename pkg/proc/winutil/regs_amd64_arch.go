@@ -266,7 +266,7 @@ type AMD64CONTEXT struct {
 	LastExceptionFromRip uint64
 }
 
-// NewCONTEXT allocates Windows CONTEXT structure aligned to 16 bytes.
+// NewAMD64CONTEXT allocates Windows CONTEXT structure aligned to 16 bytes.
 func NewAMD64CONTEXT() *AMD64CONTEXT {
 	var c *AMD64CONTEXT
 	buf := make([]byte, unsafe.Sizeof(*c)+15)
