@@ -35,17 +35,13 @@ type AMD64Registers struct {
 	fs      uint64
 	gs      uint64
 	tls     uint64
-	Context *CONTEXT
+	Context *AMD64CONTEXT
 	fltSave *XMM_SAVE_AREA32
-}
-
-func NewRegisters(context *CONTEXT, TebBaseAddress uint64) proc.Registers {
-	return NewAMD64Registers(context, TebBaseAddress)
 }
 
 // NewAMD64Registers creates a new AMD64Registers struct from a CONTEXT
 // struct and the TEB base address of the thread.
-func NewAMD64Registers(context *CONTEXT, TebBaseAddress uint64) *AMD64Registers {
+func NewAMD64Registers(context *AMD64CONTEXT, TebBaseAddress uint64) *AMD64Registers {
 	regs := &AMD64Registers{
 		rax:    uint64(context.Rax),
 		rbx:    uint64(context.Rbx),
@@ -175,15 +171,14 @@ func (r *AMD64Registers) GAddr() (uint64, bool) {
 
 // Copy returns a copy of these registers that is guaranteed not to change.
 func (r *AMD64Registers) Copy() (proc.Registers, error) {
-	var rr AMD64Registers
-	rr = *r
-	rr.Context = NewCONTEXT()
+	rr := *r
+	rr.Context = NewAMD64CONTEXT()
 	*(rr.Context) = *(r.Context)
 	rr.fltSave = &rr.Context.FltSave
 	return &rr, nil
 }
 
-func (r *AMD64Registers) Ctx() *CONTEXT {
+func (r *AMD64Registers) Ctx() CONTEXT {
 	return r.Context
 }
 
@@ -213,8 +208,8 @@ type XMM_SAVE_AREA32 struct {
 	Reserved4      [96]byte
 }
 
-// CONTEXT tracks the _CONTEXT of windows.
-type CONTEXT struct {
+// AMD64CONTEXT tracks the _CONTEXT of windows.
+type AMD64CONTEXT struct {
 	P1Home uint64
 	P2Home uint64
 	P3Home uint64
@@ -272,26 +267,30 @@ type CONTEXT struct {
 }
 
 // NewCONTEXT allocates Windows CONTEXT structure aligned to 16 bytes.
-func NewCONTEXT() *CONTEXT {
-	var c *CONTEXT
+func NewAMD64CONTEXT() *AMD64CONTEXT {
+	var c *AMD64CONTEXT
 	buf := make([]byte, unsafe.Sizeof(*c)+15)
-	return (*CONTEXT)(unsafe.Pointer((uintptr(unsafe.Pointer(&buf[15]))) &^ 15))
+	return (*AMD64CONTEXT)(unsafe.Pointer((uintptr(unsafe.Pointer(&buf[15]))) &^ 15))
 }
 
-func (ctx *CONTEXT) SetPC(pc uint64) {
+func (ctx *AMD64CONTEXT) SetFlags(flags uint32) {
+	ctx.ContextFlags = flags
+}
+
+func (ctx *AMD64CONTEXT) SetPC(pc uint64) {
 	ctx.Rip = pc
 }
 
-func (ctx *CONTEXT) SetTrap(trap bool) {
+func (ctx *AMD64CONTEXT) SetTrap(trap bool) {
 	const v = 0x100
 	if trap {
-		ctx.Cpsr |= v
+		ctx.EFlags |= v
 	} else {
-		ctx.Cpsr &= ^uint32(v)
+		ctx.EFlags &= ^uint32(v)
 	}
 }
 
-func (ctx *CONTEXT) SetReg(regNum uint64, reg *op.DwarfRegister) error {
+func (ctx *AMD64CONTEXT) SetReg(regNum uint64, reg *op.DwarfRegister) error {
 	var p *uint64
 
 	switch regNum {

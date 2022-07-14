@@ -456,7 +456,7 @@ func (dbp *nativeProcess) stop(cctx *proc.ContinueOnceContext, trapthread *nativ
 		return nil, err
 	}
 
-	context := winutil.NewCONTEXT()
+	context := winutil.NewCONTEXT(dbp.bi.Arch.Name)
 
 	for _, thread := range dbp.threads {
 		thread.os.delayErr = nil
@@ -466,7 +466,7 @@ func (dbp *nativeProcess) stop(cctx *proc.ContinueOnceContext, trapthread *nativ
 			_, thread.os.delayErr = _SuspendThread(thread.os.hThread)
 			if thread.os.delayErr == nil {
 				// This call will block until the thread has stopped.
-				_ = _GetThreadContext(thread.os.hThread, context)
+				_ = GetThreadContext(thread.os.hThread, context)
 			}
 		}
 	}

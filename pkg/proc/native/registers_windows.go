@@ -11,24 +11,24 @@ import (
 
 // SetPC sets the RIP register to the value specified by `pc`.
 func (thread *nativeThread) setPC(pc uint64) error {
-	context := winutil.NewCONTEXT()
-	context.ContextFlags = _CONTEXT_ALL
+	context := winutil.NewCONTEXT(thread.dbp.bi.Arch.Name)
+	context.SetFlags(_CONTEXT_ALL)
 
-	err := _GetThreadContext(thread.os.hThread, context)
+	err := GetThreadContext(thread.os.hThread, context)
 	if err != nil {
 		return err
 	}
 
 	context.SetPC(pc)
 
-	return _SetThreadContext(thread.os.hThread, context)
+	return SetThreadContext(thread.os.hThread, context)
 }
 
 // SetReg changes the value of the specified register.
 func (thread *nativeThread) SetReg(regNum uint64, reg *op.DwarfRegister) error {
-	context := winutil.NewCONTEXT()
-	context.ContextFlags = _CONTEXT_ALL
-	err := _GetThreadContext(thread.os.hThread, context)
+	context := winutil.NewCONTEXT(thread.dbp.bi.Arch.Name)
+	context.SetFlags(_CONTEXT_ALL)
+	err := GetThreadContext(thread.os.hThread, context)
 	if err != nil {
 		return err
 	}
@@ -38,14 +38,14 @@ func (thread *nativeThread) SetReg(regNum uint64, reg *op.DwarfRegister) error {
 		return err
 	}
 
-	return _SetThreadContext(thread.os.hThread, context)
+	return SetThreadContext(thread.os.hThread, context)
 }
 
 func registers(thread *nativeThread) (proc.Registers, error) {
-	context := winutil.NewCONTEXT()
+	context := winutil.NewCONTEXT(thread.dbp.bi.Arch.Name)
 
-	context.ContextFlags = _CONTEXT_ALL
-	err := _GetThreadContext(thread.os.hThread, context)
+	context.SetFlags(_CONTEXT_ALL)
+	err := GetThreadContext(thread.os.hThread, context)
 	if err != nil {
 		return nil, err
 	}

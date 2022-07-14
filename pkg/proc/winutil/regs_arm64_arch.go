@@ -26,7 +26,6 @@ type neon128 struct {
 type ARM64Registers struct {
 	Regs           [31]uint64
 	tls            uint64
-	iscgo          bool
 	Sp             uint64
 	Pc             uint64
 	FloatRegisters [32]neon128
@@ -36,16 +35,12 @@ type ARM64Registers struct {
 	Bvr            [ARM64_MAX_BREAKPOINTS]uint64
 	Wcr            [ARM64_MAX_WATCHPOINTS]uint32
 	Wvr            [ARM64_MAX_WATCHPOINTS]uint64
-	Context        *CONTEXT
-}
-
-func NewRegisters(context *CONTEXT, TebBaseAddress uint64) proc.Registers {
-	return NewARM64Registers(context, TebBaseAddress)
+	Context        *ARM64CONTEXT
 }
 
 // NewARM64Registers creates a new ARM64Registers struct from a CONTEXT
 // struct and the TEB base address of the thread.
-func NewARM64Registers(context *CONTEXT, TebBaseAddress uint64) *ARM64Registers {
+func NewARM64Registers(context *ARM64CONTEXT, TebBaseAddress uint64) *ARM64Registers {
 	regs := &ARM64Registers{
 		Regs:           context.Regs,
 		tls:            TebBaseAddress,
@@ -118,17 +113,17 @@ func (r *ARM64Registers) LR() uint64 {
 // Copy returns a copy of these registers that is guaranteed not to change.
 func (r *ARM64Registers) Copy() (proc.Registers, error) {
 	rr := *r
-	rr.Context = NewCONTEXT()
+	rr.Context = NewARM64CONTEXT()
 	*(rr.Context) = *(r.Context)
 	return &rr, nil
 }
 
-func (r *ARM64Registers) Ctx() *CONTEXT {
+func (r *ARM64Registers) Ctx() CONTEXT {
 	return r.Context
 }
 
-// CONTEXT tracks the _ARM64_NT_CONTEXT of windows.
-type CONTEXT struct {
+// ARM64CONTEXT tracks the _ARM64_NT_CONTEXT of windows.
+type ARM64CONTEXT struct {
 	ContextFlags   uint32
 	Cpsr           uint32
 	Regs           [31]uint64
@@ -144,17 +139,21 @@ type CONTEXT struct {
 }
 
 // NewCONTEXT allocates Windows CONTEXT structure aligned to 16 bytes.
-func NewCONTEXT() *CONTEXT {
+func NewARM64CONTEXT() *ARM64CONTEXT {
 	var c *CONTEXT
 	buf := make([]byte, unsafe.Sizeof(*c)+15)
-	return (*CONTEXT)(unsafe.Pointer((uintptr(unsafe.Pointer(&buf[15]))) &^ 15))
+	return (*ARM64CONTEXT)(unsafe.Pointer((uintptr(unsafe.Pointer(&buf[15]))) &^ 15))
 }
 
-func (ctx *CONTEXT) SetPC(pc uint64) {
+func (ctx *ARM64CONTEXT) SetFlags(flags uint32) {
+	ctx.ContextFlags = flags
+}
+
+func (ctx *ARM64CONTEXT) SetPC(pc uint64) {
 	ctx.Pc = pc
 }
 
-func (ctx *CONTEXT) SetTrap(trap bool) {
+func (ctx *ARM64CONTEXT) SetTrap(trap bool) {
 	const v = 0x200000
 	if trap {
 		ctx.Cpsr |= v
@@ -163,7 +162,7 @@ func (ctx *CONTEXT) SetTrap(trap bool) {
 	}
 }
 
-func (ctx *CONTEXT) SetReg(regNum uint64, reg *op.DwarfRegister) error {
+func (ctx *ARM64CONTEXT) SetReg(regNum uint64, reg *op.DwarfRegister) error {
 	switch regNum {
 	case regnum.ARM64_PC:
 		ctx.Pc = reg.Uint64Val
