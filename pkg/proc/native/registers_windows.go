@@ -6,29 +6,28 @@ import (
 
 	"github.com/go-delve/delve/pkg/dwarf/op"
 	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/pkg/proc/winutil"
 )
 
 // SetPC sets the RIP register to the value specified by `pc`.
 func (thread *nativeThread) setPC(pc uint64) error {
-	context := winutil.NewCONTEXT(thread.dbp.bi.Arch.Name)
+	context := newContext()
 	context.SetFlags(_CONTEXT_ALL)
 
-	err := GetThreadContext(thread.os.hThread, context)
+	err := thread.getContext(context)
 	if err != nil {
 		return err
 	}
 
 	context.SetPC(pc)
 
-	return SetThreadContext(thread.os.hThread, context)
+	return thread.setContext(context)
 }
 
 // SetReg changes the value of the specified register.
 func (thread *nativeThread) SetReg(regNum uint64, reg *op.DwarfRegister) error {
-	context := winutil.NewCONTEXT(thread.dbp.bi.Arch.Name)
+	context := newContext()
 	context.SetFlags(_CONTEXT_ALL)
-	err := GetThreadContext(thread.os.hThread, context)
+	err := thread.getContext(context)
 	if err != nil {
 		return err
 	}
@@ -38,14 +37,14 @@ func (thread *nativeThread) SetReg(regNum uint64, reg *op.DwarfRegister) error {
 		return err
 	}
 
-	return SetThreadContext(thread.os.hThread, context)
+	return thread.setContext(context)
 }
 
 func registers(thread *nativeThread) (proc.Registers, error) {
-	context := winutil.NewCONTEXT(thread.dbp.bi.Arch.Name)
+	context := newContext()
 
 	context.SetFlags(_CONTEXT_ALL)
-	err := GetThreadContext(thread.os.hThread, context)
+	err := thread.getContext(context)
 	if err != nil {
 		return nil, err
 	}
@@ -56,5 +55,5 @@ func registers(thread *nativeThread) (proc.Registers, error) {
 		return nil, fmt.Errorf("NtQueryInformationThread failed: it returns 0x%x", status)
 	}
 
-	return winutil.NewRegisters(context, uint64(threadInfo.TebBaseAddress)), nil
+	return newRegisters(context, uint64(threadInfo.TebBaseAddress)), nil
 }

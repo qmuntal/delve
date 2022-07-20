@@ -178,10 +178,6 @@ func (r *AMD64Registers) Copy() (proc.Registers, error) {
 	return &rr, nil
 }
 
-func (r *AMD64Registers) Ctx() CONTEXT {
-	return r.Context
-}
-
 // M128A tracks the _M128A windows struct.
 type M128A struct {
 	Low  uint64

@@ -7,8 +7,6 @@ import (
 	sys "golang.org/x/sys/windows"
 
 	"github.com/go-delve/delve/pkg/proc"
-	"github.com/go-delve/delve/pkg/proc/amd64util"
-	"github.com/go-delve/delve/pkg/proc/winutil"
 )
 
 const enableHardwareBreakpoints = false // see https://github.com/go-delve/delve/issues/2768
@@ -26,17 +24,17 @@ type osSpecificDetails struct {
 }
 
 func (t *nativeThread) singleStep() error {
-	context := winutil.NewCONTEXT(t.dbp.bi.Arch.Name)
+	context := newContext()
 	context.SetFlags(_CONTEXT_ALL)
 
 	// Set the processor TRAP flag
-	err := GetThreadContext(t.os.hThread, context)
+	err := t.getContext(context)
 	if err != nil {
 		return err
 	}
 	context.SetTrap(true)
 
-	err = SetThreadContext(t.os.hThread, context)
+	err = t.setContext(context)
 	if err != nil {
 		return err
 	}
@@ -98,14 +96,14 @@ func (t *nativeThread) singleStep() error {
 	}
 
 	// Unset the processor TRAP flag
-	err = GetThreadContext(t.os.hThread, context)
+	err = t.getContext(context)
 	if err != nil {
 		return err
 	}
 
 	context.SetTrap(false)
 
-	return SetThreadContext(t.os.hThread, context)
+	return t.setContext(context)
 }
 
 func (t *nativeThread) resume() error {
@@ -154,37 +152,6 @@ func (t *nativeThread) ReadMemory(buf []byte, addr uint64) (int, error) {
 		err = ErrShortRead
 	}
 	return int(count), err
-}
-
-func (t *nativeThread) restoreRegisters(savedRegs proc.Registers) error {
-	return SetThreadContext(t.os.hThread, savedRegs.(winutil.Registers).Ctx())
-}
-
-func (t *nativeThread) withDebugRegisters(f func(*amd64util.DebugRegisters) error) error {
-	if !enableHardwareBreakpoints {
-		return errors.New("hardware breakpoints not supported")
-	}
-
-	context := winutil.NewAMD64CONTEXT()
-	context.ContextFlags = _CONTEXT_DEBUG_REGISTERS
-
-	err := GetThreadContext(t.os.hThread, context)
-	if err != nil {
-		return err
-	}
-
-	drs := amd64util.NewDebugRegisters(&context.Dr0, &context.Dr1, &context.Dr2, &context.Dr3, &context.Dr6, &context.Dr7)
-
-	err = f(drs)
-	if err != nil {
-		return err
-	}
-
-	if drs.Dirty {
-		return SetThreadContext(t.os.hThread, context)
-	}
-
-	return nil
 }
 
 // SoftExc returns true if this thread received a software exception during the last resume.

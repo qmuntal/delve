@@ -118,10 +118,6 @@ func (r *ARM64Registers) Copy() (proc.Registers, error) {
 	return &rr, nil
 }
 
-func (r *ARM64Registers) Ctx() CONTEXT {
-	return r.Context
-}
-
 // ARM64CONTEXT tracks the _ARM64_NT_CONTEXT of windows.
 type ARM64CONTEXT struct {
 	ContextFlags   uint32
@@ -140,7 +136,7 @@ type ARM64CONTEXT struct {
 
 // NewARM64CONTEXT allocates Windows CONTEXT structure aligned to 16 bytes.
 func NewARM64CONTEXT() *ARM64CONTEXT {
-	var c *CONTEXT
+	var c *ARM64CONTEXT
 	buf := make([]byte, unsafe.Sizeof(*c)+15)
 	return (*ARM64CONTEXT)(unsafe.Pointer((uintptr(unsafe.Pointer(&buf[15]))) &^ 15))
 }

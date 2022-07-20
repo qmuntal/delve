@@ -62,9 +62,5 @@ func (th *windowsAMD64Thread) pid() int {
 }
 
 func (th *windowsAMD64Thread) registers() (proc.Registers, error) {
-	ctx := th.th.Context
-	if ctx == nil {
-		ctx = winutil.NewAMD64CONTEXT()
-	}
-	return winutil.NewAMD64Registers(ctx.(*winutil.AMD64CONTEXT), th.th.TEB), nil
+	return winutil.NewAMD64Registers(&th.th.Context, th.th.TEB), nil
 }

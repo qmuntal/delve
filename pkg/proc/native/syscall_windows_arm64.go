@@ -1,10 +1,6 @@
 package native
 
-import (
-	"syscall"
-
-	"github.com/go-delve/delve/pkg/proc/winutil"
-)
+import "github.com/go-delve/delve/pkg/proc/winutil"
 
 const (
 	_CONTEXT_ARM64               = 0x00400000
@@ -25,11 +21,3 @@ const (
 // structure as _CONTEXT, but we need to have it in pkg/proc/winutil.CONTEXT
 // because it's also used on non-windows operating systems.
 type _CONTEXT = winutil.ARM64CONTEXT
-
-func GetThreadContext(thread syscall.Handle, context winutil.CONTEXT) (err error) {
-	return _GetThreadContext(thread, context.(*winutil.ARM64CONTEXT))
-}
-
-func SetThreadContext(thread syscall.Handle, context winutil.CONTEXT) (err error) {
-	return _SetThreadContext(thread, context.(*winutil.ARM64CONTEXT))
-}
