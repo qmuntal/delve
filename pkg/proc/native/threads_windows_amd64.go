@@ -36,7 +36,7 @@ func (t *nativeThread) withDebugRegisters(f func(*amd64util.DebugRegisters) erro
 	context := winutil.NewAMD64CONTEXT()
 	context.ContextFlags = _CONTEXT_DEBUG_REGISTERS
 
-	err := GetThreadContext(t.os.hThread, context)
+	err := t.getContext(context)
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func (t *nativeThread) withDebugRegisters(f func(*amd64util.DebugRegisters) erro
 	}
 
 	if drs.Dirty {
-		return SetThreadContext(t.os.hThread, context)
+		return t.setContext(context)
 	}
 
 	return nil
